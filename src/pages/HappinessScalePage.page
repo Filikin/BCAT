@@ -1,0 +1,16 @@
+<apex:page standardcontroller="Contact" Extensions="HappinessScaleController" title="Happiness Scale for {!clientName}" action="{!extractData}" showHeader="false" sidebar="false">
+	<apex:pageMessages />
+	<br/>
+	<center><h1>Happiness Scale for {!clientName}</h1></center>
+	<br/>
+	<apex:chart height="265" width="700" legend="true" data="{!happinessdata}" rendered="{!anyData}">
+    	<apex:legend position="left"/>
+    	<apex:axis type="Radial" position="radial" minimum="0" maximum="10">
+        	<apex:chartLabel />
+    	</apex:axis>
+     	<apex:radarSeries xField="name" yField="data1" title="{!firstDate}" tips="true" opacity="0.4"/>
+     	<apex:radarSeries xField="name" yField="data2" title="{!secondDate}" tips="true" opacity="0.4" rendered="{!showSecond}"/>
+     	<apex:radarSeries xField="name" yField="data3" title="{!thirdDate}" tips="true" opacity="0.4" rendered="{!showThird}"/>
+     	<apex:radarSeries xField="name" yField="data4" title="{!fourthDate}" tips="true" opacity="0.4" rendered="{!showFourth}"/>
+ 	</apex:chart>
+ </apex:page>
