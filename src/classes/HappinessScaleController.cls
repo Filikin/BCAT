@@ -75,37 +75,69 @@ public with sharing class HappinessScaleController
     
     public void extractData ()
     {
-    	String actualFieldSetName = 'Default_set';
+    	List<RecordType> CRARecordTypes = [select ID, Name from RecordType where sObjectType = 'ecass01__CRA__c'];
+    	ID CRAId, CRAFTId;
+    	if (CRARecordTypes[0].Name == 'CRA')
+    	{
+    		CRAId = CRARecordTypes[0].id;
+    		CRAFTId = CRARecordTypes[1].id;
+    	} 
+    	else
+    	{
+    		CRAId = CRARecordTypes[1].id;
+    		CRAFTId = CRARecordTypes[0].id;
+    	}
+    	Integer numCRA = [select count() from ecass01__CRA__c where ecass01__Client__c  = :client.ID and RecordTypeID=:CRAId];
+    	Integer numCRAFT = [select count() from ecass01__CRA__c where ecass01__Client__c  = :client.ID and RecordTypeID=:CRAFTId];
+ 
+     	String actualFieldSetName = 'Default_set';
+ 	  	if (numCRA < numCRAFT) actualFieldSetName = 'CRAFT_set';
+    	
 		List<Schema.FieldSetMember> happinessFields = getFields (actualFieldSetName);
     	if (happinessFields == null) return;
-    	
 		List<ecass01__CRA__c> CRAs = getCRAs (happinessFields, client.Id); 
        
         if (CRAs.size() > 0)
         {
-        	for (Schema.FieldSetMember oneField: happinessFields)
+	       	for (Schema.FieldSetMember oneField: happinessFields)
         	{
             	happypoint.add (new HappinessPointData (CRAs, oneField.getLabel(), oneField.getFieldPath()));
         	}
           firstDate = CRAs[0].ecass01__Date__c.format();
           Integer lastCRAIndex = CRAs.size();
           if (--lastCRAIndex > 0) fourthDate = CRAs[lastCRAIndex].ecass01__Date__c.format();
-          else fourthDate = '';
+          else fourthDate = '.';
           if (--lastCRAIndex > 0) thirdDate = CRAs[lastCRAIndex].ecass01__Date__c.format();
-          else thirdDate = '';
+          else thirdDate = '.';
           if (--lastCRAIndex > 0) secondDate = CRAs[lastCRAIndex].ecass01__Date__c.format();
-          else secondDate = '';
+          else secondDate = '.';
         }
     }
     
 // Helper functions
+// not sure if we need CRA of CRAFT, so return the one that we have more of
  	public static List<ecass01__CRA__c> getCRAs (List<Schema.FieldSetMember> needsFields, ID clientID)
 	{
 		String soql = getSelectStatement (needsFields);
-		soql += 'FROM ecass01__CRA__c where ecass01__Client__c  = :clientID order by ecass01__Date__c asc';
+		soql += 'RecordTypeID FROM ecass01__CRA__c where ecass01__Client__c  = :clientID order by ecass01__Date__c asc';
 		
-		System.debug(soql);
-	    return database.query(soql);
+	    List<ecass01__CRA__c> allCRAs = database.query(soql);
+	    
+	    if (allCRAs.size() > 0)
+	    {
+		    ID firstRecordType = allCRAs[0].RecordTypeID;
+		    List<ecass01__CRA__c> CRAList1 = new List<ecass01__CRA__c>();
+		    List<ecass01__CRA__c> CRAList2 = new List<ecass01__CRA__c>();
+		    
+		    for (ecass01__CRA__c oneCRA: allCRAs)
+		    {
+		    	if (oneCRA.RecordTypeId == firstRecordType) CRAList1.add (oneCRA);
+		    	else CRAList2.add (oneCRA);
+		    }
+		    if (CRAList1.size() > CRAList2.size()) return CRAList1;
+		    else return CRAList2;
+	    }
+	    else return Null;
 	}
  
     public static String getSelectStatement (List<Schema.FieldSetMember> fieldList)
@@ -116,13 +148,13 @@ public with sharing class HappinessScaleController
         }
         // if date is not already there, include it
         if (!query.contains(' ecass01__Date__c,')) query += 'ecass01__Date__c, ';
-        query += 'Id ';	
+        query += 'Id, ';	
         return query;
  	}
 
     public List<Schema.FieldSetMember> getFields(String fieldSetName) 
     {
-    	System.Debug ('Fieldset name is' + fieldSetName);
+    	System.Debug ('Fieldset name is ' + fieldSetName);
     	Schema.FieldSet fs1 = Schema.SObjectType.ecass01__CRA__c.fieldSets.getMap().get(fieldSetName);
     	if (fs1 == null)
     	{
